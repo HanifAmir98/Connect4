@@ -310,8 +310,11 @@
             <div class="room-info" id="roomInfo" style="display: none;">
                 <h3>Room: <span id="currentRoomName"></span></h3>
                 <div class="invite-link">
-                    <strong>Invite Link:</strong> <span id="inviteLink"></span>
-                    <button class="copy-btn" id="copyLinkBtn">Copy</button>
+                    <strong>📤 Share This Link After Each Move:</strong> <span id="inviteLink"></span>
+                    <button class="copy-btn" id="copyLinkBtn">Copy Link</button>
+                </div>
+                <div style="background: #fef3c7; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 0.9em; color: #92400e;">
+                    <strong>📋 Instructions:</strong> After making your move, copy and share the updated link above with your opponent. They should click the link to see your move and make their turn.
                 </div>
             </div>
 
@@ -334,6 +337,7 @@
             <div class="game-status" id="gameStatus" style="display: none;"></div>
 
             <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" id="refreshGameBtn">🔄 Refresh Game</button>
                 <button class="btn" id="leaveGameBtn">Leave Game</button>
                 <button class="btn" id="newGameBtn" style="display: none;">New Game</button>
             </div>
@@ -366,6 +370,7 @@
                 document.getElementById('createRoomBtn').addEventListener('click', () => this.createRoom());
                 document.getElementById('joinRoomBtn').addEventListener('click', () => this.joinRoom());
                 document.getElementById('quickPlayBtn').addEventListener('click', () => this.quickPlay());
+                document.getElementById('refreshGameBtn').addEventListener('click', () => this.manualRefresh());
                 document.getElementById('leaveGameBtn').addEventListener('click', () => this.leaveGame());
                 document.getElementById('newGameBtn').addEventListener('click', () => this.requestNewGame());
                 document.getElementById('copyLinkBtn').addEventListener('click', () => this.copyInviteLink());
@@ -386,12 +391,12 @@
             }
 
             setupPolling() {
-                // Check for game state updates every 3 seconds
+                // Check for game state updates every 1 second for better responsiveness
                 setInterval(() => {
                     if (this.roomName) {
                         this.checkGameState();
                     }
-                }, 3000);
+                }, 1000);
             }
 
             async checkGameState() {
@@ -700,7 +705,7 @@
                             this.currentPlayer = this.currentPlayer === 'red' ? 'yellow' : 'red';
                             this.updatePlayerStatus();
                             this.saveGameState();
-                            this.showGameMessage(`Move made! Now it's ${this.currentPlayer.toUpperCase()}'s turn.`);
+                            this.showGameMessage(`Move made! Share the updated link with your opponent for ${this.currentPlayer.toUpperCase()}'s turn.`);
                         }
                         break;
                     }
@@ -784,6 +789,14 @@
                     const gameData = encodeURIComponent(JSON.stringify(gameState));
                     const newURL = `${window.location.origin}${window.location.pathname}?room=${this.roomName}&game=${gameData}`;
                     window.history.replaceState({}, '', newURL);
+                    
+                    // Also update the invite link
+                    const inviteLink = document.getElementById('inviteLink');
+                    if (inviteLink) {
+                        inviteLink.textContent = newURL;
+                    }
+                    
+                    console.log('Updated URL with game state:', gameState.timestamp);
                 } catch (error) {
                     console.log('Could not update URL with game state');
                 }
@@ -832,6 +845,12 @@
                 document.getElementById('newGameBtn').style.display = 'none';
                 this.updatePlayerStatus();
                 this.saveGameState();
+            }
+
+            manualRefresh() {
+                console.log('Manual refresh triggered');
+                this.checkGameState();
+                this.showGameMessage('🔄 Checking for updates...');
             }
 
             leaveGame() {
