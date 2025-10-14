@@ -386,22 +386,55 @@
             }
 
             setupPolling() {
-                // Simulate real-time updates with polling
+                // Check for game state updates every 3 seconds
                 setInterval(() => {
                     if (this.roomName) {
                         this.checkGameState();
                     }
-                }, 1000);
+                }, 3000);
             }
 
             async checkGameState() {
-                // Simulate checking game state
-                // In a real implementation, this would poll your server
-                const state = localStorage.getItem(`connect4_${this.roomName}`);
-                if (state) {
-                    const gameState = JSON.parse(state);
-                    this.updateGameState(gameState);
+                // Use a simple approach with a shared JSON file on GitHub
+                try {
+                    // Create a unique identifier for this room
+                    const roomId = this.getRoomId();
+                    
+                    // Try to fetch from a public JSON file (this would need to be set up)
+                    // For now, we'll use a different approach with URL parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const gameData = urlParams.get('game');
+                    
+                    if (gameData) {
+                        try {
+                            const gameState = JSON.parse(decodeURIComponent(gameData));
+                            if (gameState.roomName === this.roomName) {
+                                this.updateGameState(gameState);
+                            }
+                        } catch (e) {
+                            console.log('Invalid game data in URL');
+                        }
+                    }
+                } catch (error) {
+                    console.log('Checking localStorage fallback');
+                    // Fallback to localStorage for same-browser testing
+                    const state = localStorage.getItem(`connect4_${this.roomName}`);
+                    if (state) {
+                        const gameState = JSON.parse(state);
+                        this.updateGameState(gameState);
+                    }
                 }
+            }
+
+            getRoomId() {
+                // Generate a consistent ID based on room name
+                let hash = 0;
+                for (let i = 0; i < this.roomName.length; i++) {
+                    const char = this.roomName.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash).toString(36);
             }
 
             createRoom() {
@@ -497,6 +530,12 @@
                             cell.classList.add(this.gameBoard[row][col]);
                         }
 
+                        // Highlight last move
+                        if (this.lastMove && this.lastMove.row === row && this.lastMove.col === col) {
+                            cell.style.boxShadow = '0 0 15px rgba(0, 0, 0, 0.8)';
+                            cell.style.border = '3px solid #333';
+                        }
+
                         cell.addEventListener('click', () => this.makeMove(col));
                         boardElement.appendChild(cell);
                     }
@@ -513,6 +552,8 @@
                     if (!this.gameBoard[row][col]) {
                         this.gameBoard[row][col] = this.currentPlayer;
                         this.renderBoard();
+                        
+                        this.lastMove = { row, col, color: this.currentPlayer };
                         
                         if (this.checkWin(row, col)) {
                             this.endGame(this.currentPlayer);
@@ -583,12 +624,30 @@
             saveGameState() {
                 if (this.roomName) {
                     const gameState = {
+                        roomName: this.roomName,
                         board: this.gameBoard,
                         currentPlayer: this.currentPlayer,
                         gameActive: this.gameActive,
-                        playerCount: this.playerCount
+                        playerCount: this.playerCount,
+                        lastMove: this.lastMove,
+                        timestamp: Date.now()
                     };
+                    
+                    // Save to localStorage for same-browser testing
                     localStorage.setItem(`connect4_${this.roomName}`, JSON.stringify(gameState));
+                    
+                    // Update URL with game state for sharing
+                    this.updateURLWithGameState(gameState);
+                }
+            }
+
+            updateURLWithGameState(gameState) {
+                try {
+                    const gameData = encodeURIComponent(JSON.stringify(gameState));
+                    const newURL = `${window.location.origin}${window.location.pathname}?room=${this.roomName}&game=${gameData}`;
+                    window.history.replaceState({}, '', newURL);
+                } catch (error) {
+                    console.log('Could not update URL with game state');
                 }
             }
 
@@ -603,10 +662,17 @@
             }
 
             updateGameState(gameState) {
+                // Only update if this is a newer state (to avoid overwriting with old data)
+                if (gameState.timestamp && gameState.timestamp <= (this.lastStateTimestamp || 0)) {
+                    return;
+                }
+                
                 this.gameBoard = gameState.board;
                 this.currentPlayer = gameState.currentPlayer;
                 this.gameActive = gameState.gameActive;
                 this.playerCount = gameState.playerCount;
+                this.lastMove = gameState.lastMove;
+                this.lastStateTimestamp = gameState.timestamp || Date.now();
                 
                 this.renderBoard();
                 this.updatePlayerStatus();
