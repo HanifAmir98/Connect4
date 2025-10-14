@@ -498,6 +498,7 @@
                             
                             this.updateGameState(gameState);
                             this.updatePlayerStatus();
+                            this.showGameMessage(`Joined game as ${this.playerColor.toUpperCase()} player!`);
                             return;
                         }
                     } catch (e) {
@@ -541,6 +542,42 @@
                 document.getElementById('gameSection').classList.add('active');
                 this.gameActive = true;
                 this.updatePlayerStatus();
+                this.showGameMessage(`Game started! ${this.playerColor.toUpperCase()} player is ready.`);
+            }
+
+            showGameMessage(message) {
+                // Create or update a temporary message display
+                let messageDiv = document.getElementById('gameMessage');
+                if (!messageDiv) {
+                    messageDiv = document.createElement('div');
+                    messageDiv.id = 'gameMessage';
+                    messageDiv.style.cssText = `
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: rgba(0, 0, 0, 0.8);
+                        color: white;
+                        padding: 20px 30px;
+                        border-radius: 10px;
+                        font-size: 1.2em;
+                        font-weight: bold;
+                        z-index: 1000;
+                        text-align: center;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                    `;
+                    document.body.appendChild(messageDiv);
+                }
+                
+                messageDiv.textContent = message;
+                messageDiv.style.display = 'block';
+                
+                // Hide message after 3 seconds
+                setTimeout(() => {
+                    if (messageDiv) {
+                        messageDiv.style.display = 'none';
+                    }
+                }, 3000);
             }
 
             updateRoomInfo() {
@@ -566,16 +603,44 @@
             }
 
             updatePlayerStatus() {
-                document.getElementById('player1Status').textContent = this.playerColor === 'red' ? 'You (Red)' : 'Player 1 (Red)';
-                document.getElementById('player2Status').textContent = this.playerColor === 'yellow' ? 'You (Yellow)' : 'Player 2 (Yellow)';
-                
+                // Update player labels with clear indicators
+                const player1Status = document.getElementById('player1Status');
+                const player2Status = document.getElementById('player2Status');
                 const currentPlayerDiv = document.getElementById('currentPlayer');
-                if (this.currentPlayer === this.playerColor) {
-                    currentPlayerDiv.textContent = 'Your turn!';
-                    currentPlayerDiv.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                
+                // Clear previous status classes
+                player1Status.className = 'status';
+                player2Status.className = 'status';
+                
+                if (this.playerColor === 'red') {
+                    player1Status.textContent = 'You (Red)';
+                    player2Status.textContent = this.gameActive ? 'Opponent (Yellow)' : 'Waiting for Yellow player...';
                 } else {
-                    currentPlayerDiv.textContent = 'Waiting for opponent...';
+                    player1Status.textContent = this.gameActive ? 'Opponent (Red)' : 'Waiting for Red player...';
+                    player2Status.textContent = 'You (Yellow)';
+                }
+                
+                // Update current player indicator with clear messaging
+                if (!this.gameActive) {
+                    currentPlayerDiv.textContent = 'Waiting for players to join...';
+                    currentPlayerDiv.style.background = 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
+                } else if (this.currentPlayer === this.playerColor) {
+                    currentPlayerDiv.textContent = `🎯 YOUR TURN (${this.playerColor.toUpperCase()})`;
+                    currentPlayerDiv.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    currentPlayerDiv.style.animation = 'pulse 2s infinite';
+                } else {
+                    currentPlayerDiv.textContent = `⏳ Waiting for ${this.currentPlayer.toUpperCase()} player...`;
                     currentPlayerDiv.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                    currentPlayerDiv.style.animation = 'none';
+                }
+                
+                // Highlight the current player's status
+                if (this.currentPlayer === 'red') {
+                    player1Status.style.fontWeight = 'bold';
+                    player1Status.style.color = '#dc2626';
+                } else if (this.currentPlayer === 'yellow') {
+                    player2Status.style.fontWeight = 'bold';
+                    player2Status.style.color = '#ca8a04';
                 }
             }
 
@@ -635,6 +700,7 @@
                             this.currentPlayer = this.currentPlayer === 'red' ? 'yellow' : 'red';
                             this.updatePlayerStatus();
                             this.saveGameState();
+                            this.showGameMessage(`Move made! Now it's ${this.currentPlayer.toUpperCase()}'s turn.`);
                         }
                         break;
                     }
@@ -739,6 +805,9 @@
                     return;
                 }
                 
+                const wasMyTurn = this.currentPlayer === this.playerColor;
+                const isMyTurn = gameState.currentPlayer === this.playerColor;
+                
                 this.gameBoard = gameState.board;
                 this.currentPlayer = gameState.currentPlayer;
                 this.gameActive = gameState.gameActive;
@@ -748,6 +817,11 @@
                 
                 this.renderBoard();
                 this.updatePlayerStatus();
+                
+                // Show message if turn changed
+                if (wasMyTurn && !isMyTurn && this.lastMove) {
+                    this.showGameMessage(`Opponent played ${this.lastMove.color.toUpperCase()}! Your turn now.`);
+                }
             }
 
             requestNewGame() {
