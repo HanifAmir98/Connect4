@@ -395,13 +395,8 @@
             }
 
             async checkGameState() {
-                // Use a simple approach with a shared JSON file on GitHub
+                // Use a simple approach with URL parameters for game state sharing
                 try {
-                    // Create a unique identifier for this room
-                    const roomId = this.getRoomId();
-                    
-                    // Try to fetch from a public JSON file (this would need to be set up)
-                    // For now, we'll use a different approach with URL parameters
                     const urlParams = new URLSearchParams(window.location.search);
                     const gameData = urlParams.get('game');
                     
@@ -410,19 +405,24 @@
                             const gameState = JSON.parse(decodeURIComponent(gameData));
                             if (gameState.roomName === this.roomName) {
                                 this.updateGameState(gameState);
+                                return Promise.resolve();
                             }
                         } catch (e) {
                             console.log('Invalid game data in URL');
                         }
                     }
-                } catch (error) {
-                    console.log('Checking localStorage fallback');
+                    
                     // Fallback to localStorage for same-browser testing
                     const state = localStorage.getItem(`connect4_${this.roomName}`);
                     if (state) {
                         const gameState = JSON.parse(state);
                         this.updateGameState(gameState);
                     }
+                    
+                    return Promise.resolve();
+                } catch (error) {
+                    console.log('Error checking game state:', error);
+                    return Promise.resolve();
                 }
             }
 
@@ -459,10 +459,74 @@
                 }
 
                 this.roomName = roomName;
-                this.playerColor = 'yellow';
                 this.showGameSection();
                 this.updateRoomInfo();
-                this.loadGameState();
+                
+                // Check for existing game state and assign appropriate player color
+                this.assignPlayerColor();
+            }
+
+            assignPlayerColor() {
+                console.log('Assigning player color for room:', this.roomName);
+                
+                // Check URL for game state first
+                const urlParams = new URLSearchParams(window.location.search);
+                const gameData = urlParams.get('game');
+                
+                if (gameData) {
+                    console.log('Found game data in URL');
+                    try {
+                        const gameState = JSON.parse(decodeURIComponent(gameData));
+                        if (gameState.roomName === this.roomName) {
+                            // Determine player color based on game state
+                            const hasRedMoves = gameState.board.some(row => row.some(cell => cell === 'red'));
+                            const hasYellowMoves = gameState.board.some(row => row.some(cell => cell === 'yellow'));
+                            
+                            if (!hasRedMoves && !hasYellowMoves) {
+                                // Empty board - this is the first player
+                                this.playerColor = 'red';
+                                console.log('Assigned RED - first player');
+                            } else if (hasRedMoves && !hasYellowMoves) {
+                                // Red has moves, yellow hasn't - assign yellow
+                                this.playerColor = 'yellow';
+                                console.log('Assigned YELLOW - second player');
+                            } else {
+                                // Both have moves or game in progress - assign based on current player
+                                this.playerColor = gameState.currentPlayer === 'red' ? 'yellow' : 'red';
+                                console.log('Assigned', this.playerColor, '- based on current player');
+                            }
+                            
+                            this.updateGameState(gameState);
+                            this.updatePlayerStatus();
+                            return;
+                        }
+                    } catch (e) {
+                        console.log('Invalid game data in URL');
+                    }
+                }
+                
+                // Check localStorage fallback
+                const state = localStorage.getItem(`connect4_${this.roomName}`);
+                if (state) {
+                    const gameState = JSON.parse(state);
+                    const hasRedMoves = gameState.board.some(row => row.some(cell => cell === 'red'));
+                    const hasYellowMoves = gameState.board.some(row => row.some(cell => cell === 'yellow'));
+                    
+                    if (!hasRedMoves && !hasYellowMoves) {
+                        this.playerColor = 'red';
+                    } else if (hasRedMoves && !hasYellowMoves) {
+                        this.playerColor = 'yellow';
+                    } else {
+                        this.playerColor = gameState.currentPlayer === 'red' ? 'yellow' : 'red';
+                    }
+                    
+                    this.updateGameState(gameState);
+                } else {
+                    // No existing game - this is the first player
+                    this.playerColor = 'red';
+                }
+                
+                this.updatePlayerStatus();
             }
 
             quickPlay() {
@@ -543,7 +607,15 @@
             }
 
             makeMove(col) {
+                console.log('Attempting move:', { 
+                    gameActive: this.gameActive, 
+                    currentPlayer: this.currentPlayer, 
+                    playerColor: this.playerColor,
+                    roomName: this.roomName 
+                });
+                
                 if (!this.gameActive || this.currentPlayer !== this.playerColor) {
+                    console.log('Move blocked - not your turn or game not active');
                     return;
                 }
 
