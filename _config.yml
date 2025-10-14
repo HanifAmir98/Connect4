@@ -1,0 +1,20 @@
+# GitHub Pages configuration
+title: Connect 4 Multiplayer
+description: A real-time multiplayer Connect 4 game
+baseurl: "/connect4"
+url: "https://yourusername.github.io"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Exclude from processing
+exclude:
+  - README.md
+  - server.js
+  - package.json
+  - package-lock.json
+  - node_modules/
+  - .gitignore
+  - .git/

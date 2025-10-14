@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect 4 - Multiplayer Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .lobby-section {
+            display: none;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .lobby-section.active {
+            display: block;
+        }
+
+        .room-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .room-controls input {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .room-controls input:focus {
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .game-section {
+            display: none;
+        }
+
+        .game-section.active {
+            display: block;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .player-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .player-info h3 {
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .player-info .status {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .current-player {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(7, 60px);
+            grid-template-rows: repeat(6, 60px);
+            gap: 5px;
+            background: #1e3a8a;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 0 auto;
+            justify-content: center;
+        }
+
+        .cell {
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+        }
+
+        .cell:hover {
+            background: #e2e8f0;
+            transform: scale(1.1);
+        }
+
+        .cell.red {
+            background: #ef4444;
+            color: white;
+        }
+
+        .cell.yellow {
+            background: #eab308;
+            color: white;
+        }
+
+        .cell.winning {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .game-status {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .game-status.winner {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .game-status.draw {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .room-info {
+            background: #e0e7ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .room-info h3 {
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+
+        .invite-link {
+            background: white;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #059669;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .connection-status.connected {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .connection-status.disconnected {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        @media (max-width: 600px) {
+            .game-board {
+                grid-template-columns: repeat(7, 45px);
+                grid-template-rows: repeat(6, 45px);
+                gap: 3px;
+                padding: 15px;
+            }
+
+            .cell {
+                font-size: 1.5em;
+            }
+
+            .room-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .room-controls input {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Connect 4</h1>
+            <p>Challenge your friends in this classic strategy game!</p>
+        </div>
+
+        <div class="lobby-section active" id="lobbySection">
+            <div class="room-controls">
+                <input type="text" id="roomNameInput" placeholder="Enter room name" maxlength="20">
+                <button class="btn" id="createRoomBtn">Create Room</button>
+                <button class="btn" id="joinRoomBtn">Join Room</button>
+                <button class="btn" id="quickPlayBtn">Quick Play</button>
+            </div>
+        </div>
+
+        <div class="game-section" id="gameSection">
+            <div class="room-info" id="roomInfo" style="display: none;">
+                <h3>Room: <span id="currentRoomName"></span></h3>
+                <div class="invite-link">
+                    <strong>Invite Link:</strong> <span id="inviteLink"></span>
+                    <button class="copy-btn" id="copyLinkBtn">Copy</button>
+                </div>
+            </div>
+
+            <div class="game-info">
+                <div class="player-info">
+                    <h3>Player 1</h3>
+                    <div class="status" id="player1Status">Waiting...</div>
+                </div>
+                <div class="current-player" id="currentPlayer">Your turn: Red</div>
+                <div class="player-info">
+                    <h3>Player 2</h3>
+                    <div class="status" id="player2Status">Waiting...</div>
+                </div>
+            </div>
+
+            <div class="game-board" id="gameBoard">
+                <!-- Game board cells will be generated by JavaScript -->
+            </div>
+
+            <div class="game-status" id="gameStatus" style="display: none;"></div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" id="leaveGameBtn">Leave Game</button>
+                <button class="btn" id="newGameBtn" style="display: none;">New Game</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Connect4Game {
+            constructor() {
+                this.socket = null;
+                this.gameBoard = [];
+                this.currentPlayer = 'red';
+                this.gameActive = false;
+                this.playerColor = null;
+                this.roomName = null;
+                this.playerCount = 0;
+                
+                this.initializeBoard();
+                this.setupEventListeners();
+                this.connectToServer();
+            }
+
+            initializeBoard() {
+                this.gameBoard = Array(6).fill(null).map(() => Array(7).fill(null));
+                this.renderBoard();
+            }
+
+            setupEventListeners() {
+                // Lobby controls
+                document.getElementById('createRoomBtn').addEventListener('click', () => this.createRoom());
+                document.getElementById('joinRoomBtn').addEventListener('click', () => this.joinRoom());
+                document.getElementById('quickPlayBtn').addEventListener('click', () => this.quickPlay());
+                document.getElementById('leaveGameBtn').addEventListener('click', () => this.leaveGame());
+                document.getElementById('newGameBtn').addEventListener('click', () => this.requestNewGame());
+                document.getElementById('copyLinkBtn').addEventListener('click', () => this.copyInviteLink());
+
+                // Enter key support for room name input
+                document.getElementById('roomNameInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.createRoom();
+                    }
+                });
+            }
+
+            connectToServer() {
+        // For GitHub Pages, we'll use localStorage for game state sharing
+        // This simulates multiplayer by sharing game state between browser tabs
+        this.updateConnectionStatus('connected');
+        this.setupPolling();
+            }
+
+            setupPolling() {
+                // Simulate real-time updates with polling
+                setInterval(() => {
+                    if (this.roomName) {
+                        this.checkGameState();
+                    }
+                }, 1000);
+            }
+
+            async checkGameState() {
+                // Simulate checking game state
+                // In a real implementation, this would poll your server
+                const state = localStorage.getItem(`connect4_${this.roomName}`);
+                if (state) {
+                    const gameState = JSON.parse(state);
+                    this.updateGameState(gameState);
+                }
+            }
+
+            createRoom() {
+                const roomName = document.getElementById('roomNameInput').value.trim();
+                if (!roomName) {
+                    alert('Please enter a room name');
+                    return;
+                }
+
+                this.roomName = roomName;
+                this.playerColor = 'red';
+                this.showGameSection();
+                this.updateRoomInfo();
+                this.saveGameState();
+            }
+
+            joinRoom() {
+                const roomName = document.getElementById('roomNameInput').value.trim();
+                if (!roomName) {
+                    alert('Please enter a room name to join');
+                    return;
+                }
+
+                this.roomName = roomName;
+                this.playerColor = 'yellow';
+                this.showGameSection();
+                this.updateRoomInfo();
+                this.loadGameState();
+            }
+
+            quickPlay() {
+                // Generate a random room name for quick play
+                const roomName = 'room_' + Math.random().toString(36).substr(2, 6);
+                document.getElementById('roomNameInput').value = roomName;
+                this.createRoom();
+            }
+
+            showGameSection() {
+                document.getElementById('lobbySection').classList.remove('active');
+                document.getElementById('gameSection').classList.add('active');
+                this.gameActive = true;
+                this.updatePlayerStatus();
+            }
+
+            updateRoomInfo() {
+                const roomInfo = document.getElementById('roomInfo');
+                const currentRoomName = document.getElementById('currentRoomName');
+                const inviteLink = document.getElementById('inviteLink');
+
+                roomInfo.style.display = 'block';
+                currentRoomName.textContent = this.roomName;
+                inviteLink.textContent = `${window.location.origin}${window.location.pathname}?room=${this.roomName}`;
+            }
+
+            copyInviteLink() {
+                const link = document.getElementById('inviteLink').textContent;
+                navigator.clipboard.writeText(link).then(() => {
+                    const btn = document.getElementById('copyLinkBtn');
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                    }, 2000);
+                });
+            }
+
+            updatePlayerStatus() {
+                document.getElementById('player1Status').textContent = this.playerColor === 'red' ? 'You (Red)' : 'Player 1 (Red)';
+                document.getElementById('player2Status').textContent = this.playerColor === 'yellow' ? 'You (Yellow)' : 'Player 2 (Yellow)';
+                
+                const currentPlayerDiv = document.getElementById('currentPlayer');
+                if (this.currentPlayer === this.playerColor) {
+                    currentPlayerDiv.textContent = 'Your turn!';
+                    currentPlayerDiv.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                } else {
+                    currentPlayerDiv.textContent = 'Waiting for opponent...';
+                    currentPlayerDiv.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                }
+            }
+
+            renderBoard() {
+                const boardElement = document.getElementById('gameBoard');
+                boardElement.innerHTML = '';
+
+                for (let row = 0; row < 6; row++) {
+                    for (let col = 0; col < 7; col++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        
+                        if (this.gameBoard[row][col]) {
+                            cell.classList.add(this.gameBoard[row][col]);
+                        }
+
+                        cell.addEventListener('click', () => this.makeMove(col));
+                        boardElement.appendChild(cell);
+                    }
+                }
+            }
+
+            makeMove(col) {
+                if (!this.gameActive || this.currentPlayer !== this.playerColor) {
+                    return;
+                }
+
+                // Find the lowest empty row in the column
+                for (let row = 5; row >= 0; row--) {
+                    if (!this.gameBoard[row][col]) {
+                        this.gameBoard[row][col] = this.currentPlayer;
+                        this.renderBoard();
+                        
+                        if (this.checkWin(row, col)) {
+                            this.endGame(this.currentPlayer);
+                        } else if (this.checkDraw()) {
+                            this.endGame('draw');
+                        } else {
+                            this.currentPlayer = this.currentPlayer === 'red' ? 'yellow' : 'red';
+                            this.updatePlayerStatus();
+                            this.saveGameState();
+                        }
+                        break;
+                    }
+                }
+            }
+
+            checkWin(row, col) {
+                const color = this.gameBoard[row][col];
+                
+                // Check horizontal
+                let count = 1;
+                for (let c = col - 1; c >= 0 && this.gameBoard[row][c] === color; c--) count++;
+                for (let c = col + 1; c < 7 && this.gameBoard[row][c] === color; c++) count++;
+                if (count >= 4) return true;
+
+                // Check vertical
+                count = 1;
+                for (let r = row - 1; r >= 0 && this.gameBoard[r][col] === color; r--) count++;
+                for (let r = row + 1; r < 6 && this.gameBoard[r][col] === color; r++) count++;
+                if (count >= 4) return true;
+
+                // Check diagonal (top-left to bottom-right)
+                count = 1;
+                for (let r = row - 1, c = col - 1; r >= 0 && c >= 0 && this.gameBoard[r][c] === color; r--, c--) count++;
+                for (let r = row + 1, c = col + 1; r < 6 && c < 7 && this.gameBoard[r][c] === color; r++, c++) count++;
+                if (count >= 4) return true;
+
+                // Check diagonal (top-right to bottom-left)
+                count = 1;
+                for (let r = row - 1, c = col + 1; r >= 0 && c < 7 && this.gameBoard[r][c] === color; r--, c++) count++;
+                for (let r = row + 1, c = col - 1; r < 6 && c >= 0 && this.gameBoard[r][c] === color; r++, c--) count++;
+                if (count >= 4) return true;
+
+                return false;
+            }
+
+            checkDraw() {
+                return this.gameBoard[0].every(cell => cell !== null);
+            }
+
+            endGame(result) {
+                this.gameActive = false;
+                const gameStatus = document.getElementById('gameStatus');
+                
+                if (result === 'draw') {
+                    gameStatus.textContent = "It's a draw!";
+                    gameStatus.className = 'game-status draw';
+                } else {
+                    const winner = result === this.playerColor ? 'You' : 'Opponent';
+                    gameStatus.textContent = `${winner} wins!`;
+                    gameStatus.className = 'game-status winner';
+                }
+                
+                gameStatus.style.display = 'block';
+                document.getElementById('newGameBtn').style.display = 'inline-block';
+                this.saveGameState();
+            }
+
+            saveGameState() {
+                if (this.roomName) {
+                    const gameState = {
+                        board: this.gameBoard,
+                        currentPlayer: this.currentPlayer,
+                        gameActive: this.gameActive,
+                        playerCount: this.playerCount
+                    };
+                    localStorage.setItem(`connect4_${this.roomName}`, JSON.stringify(gameState));
+                }
+            }
+
+            loadGameState() {
+                if (this.roomName) {
+                    const state = localStorage.getItem(`connect4_${this.roomName}`);
+                    if (state) {
+                        const gameState = JSON.parse(state);
+                        this.updateGameState(gameState);
+                    }
+                }
+            }
+
+            updateGameState(gameState) {
+                this.gameBoard = gameState.board;
+                this.currentPlayer = gameState.currentPlayer;
+                this.gameActive = gameState.gameActive;
+                this.playerCount = gameState.playerCount;
+                
+                this.renderBoard();
+                this.updatePlayerStatus();
+            }
+
+            requestNewGame() {
+                this.initializeBoard();
+                this.currentPlayer = 'red';
+                this.gameActive = true;
+                document.getElementById('gameStatus').style.display = 'none';
+                document.getElementById('newGameBtn').style.display = 'none';
+                this.updatePlayerStatus();
+                this.saveGameState();
+            }
+
+            leaveGame() {
+                this.gameActive = false;
+                this.roomName = null;
+                this.playerColor = null;
+                
+                document.getElementById('lobbySection').classList.add('active');
+                document.getElementById('gameSection').classList.remove('active');
+                document.getElementById('roomInfo').style.display = 'none';
+                document.getElementById('roomNameInput').value = '';
+                
+                this.initializeBoard();
+            }
+
+            updateConnectionStatus(status) {
+                const statusElement = document.getElementById('connectionStatus');
+                statusElement.className = `connection-status ${status}`;
+                statusElement.textContent = status === 'connected' ? '🟢 Connected' : '🔴 Disconnected';
+            }
+        }
+
+        // Initialize game when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new Connect4Game();
+            
+            // Check for room parameter in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomParam = urlParams.get('room');
+            if (roomParam) {
+                document.getElementById('roomNameInput').value = roomParam;
+                setTimeout(() => {
+                    document.getElementById('joinRoomBtn').click();
+                }, 500);
+            }
+        });
+    </script>
+</body>
+</html>
