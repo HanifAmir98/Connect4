@@ -388,6 +388,7 @@
         // This simulates multiplayer by sharing game state between browser tabs
         this.updateConnectionStatus('connected');
         this.setupPolling();
+        this.setupStorageListener();
             }
 
             setupPolling() {
@@ -397,6 +398,20 @@
                         this.checkGameState();
                     }
                 }, 1000);
+            }
+
+            setupStorageListener() {
+                window.addEventListener('storage', (event) => {
+                    if (!this.roomName || event.key !== `connect4_${this.roomName}` || !event.newValue) {
+                        return;
+                    }
+
+                    try {
+                        this.updateGameState(JSON.parse(event.newValue));
+                    } catch (error) {
+                        console.log('Invalid game data in storage update');
+                    }
+                });
             }
 
             async checkGameState() {
@@ -409,8 +424,10 @@
                         try {
                             const gameState = JSON.parse(decodeURIComponent(gameData));
                             if (gameState.roomName === this.roomName) {
-                                this.updateGameState(gameState);
-                                return Promise.resolve();
+                                const updatedFromURL = this.updateGameState(gameState);
+                                if (updatedFromURL) {
+                                    return Promise.resolve();
+                                }
                             }
                         } catch (e) {
                             console.log('Invalid game data in URL');
@@ -824,7 +841,7 @@
             updateGameState(gameState) {
                 // Only update if this is a newer state (to avoid overwriting with old data)
                 if (gameState.timestamp && gameState.timestamp <= (this.lastStateTimestamp || 0)) {
-                    return;
+                    return false;
                 }
                 
                 const wasMyTurn = this.currentPlayer === this.playerColor;
@@ -844,6 +861,8 @@
                 if (!wasMyTurn && isMyTurn && this.lastMove) {
                     this.showGameMessage(`Opponent played ${this.lastMove.color.toUpperCase()}! Your turn now.`);
                 }
+
+                return true;
             }
 
             requestNewGame() {
