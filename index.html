@@ -497,6 +497,8 @@
                 // Check URL for game state first
                 const urlParams = new URLSearchParams(window.location.search);
                 const gameData = urlParams.get('game');
+                const requestedPlayerColor = urlParams.get('player');
+                const hasInvitePlayerColor = requestedPlayerColor === 'red' || requestedPlayerColor === 'yellow';
                 
                 if (gameData) {
                     console.log('Found game data in URL');
@@ -507,9 +509,9 @@
                             const hasRedMoves = gameState.board.some(row => row.some(cell => cell === 'red'));
                             const hasYellowMoves = gameState.board.some(row => row.some(cell => cell === 'yellow'));
                             
-                            if (savedPlayerColor === 'red' || savedPlayerColor === 'yellow') {
-                                this.playerColor = savedPlayerColor;
-                                console.log('Restored', this.playerColor, 'from local player state');
+                            if (hasInvitePlayerColor) {
+                                this.playerColor = requestedPlayerColor;
+                                console.log('Assigned', this.playerColor, 'from invite link');
                             } else if (!hasRedMoves && !hasYellowMoves) {
                                 // Empty shared game link - the creator already has the red role locally.
                                 this.playerColor = 'yellow';
@@ -518,6 +520,9 @@
                                 // Red has moves, yellow hasn't - assign yellow
                                 this.playerColor = 'yellow';
                                 console.log('Assigned YELLOW - second player');
+                            } else if (savedPlayerColor === 'red' || savedPlayerColor === 'yellow') {
+                                this.playerColor = savedPlayerColor;
+                                console.log('Restored', this.playerColor, 'from local player state');
                             } else {
                                 // Both have moves or game in progress - assign based on current player
                                 this.playerColor = gameState.currentPlayer === 'red' ? 'yellow' : 'red';
@@ -542,12 +547,14 @@
                     const hasRedMoves = gameState.board.some(row => row.some(cell => cell === 'red'));
                     const hasYellowMoves = gameState.board.some(row => row.some(cell => cell === 'yellow'));
                     
-                    if (savedPlayerColor === 'red' || savedPlayerColor === 'yellow') {
-                        this.playerColor = savedPlayerColor;
+                    if (hasInvitePlayerColor) {
+                        this.playerColor = requestedPlayerColor;
                     } else if (!hasRedMoves && !hasYellowMoves) {
                         this.playerColor = 'red';
                     } else if (hasRedMoves && !hasYellowMoves) {
                         this.playerColor = 'yellow';
+                    } else if (savedPlayerColor === 'red' || savedPlayerColor === 'yellow') {
+                        this.playerColor = savedPlayerColor;
                     } else {
                         this.playerColor = gameState.currentPlayer === 'red' ? 'yellow' : 'red';
                     }
@@ -619,7 +626,21 @@
 
                 roomInfo.style.display = 'block';
                 currentRoomName.textContent = this.roomName;
-                inviteLink.textContent = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(this.roomName)}`;
+                inviteLink.textContent = this.createInviteURL();
+            }
+
+            createInviteURL(gameState = null) {
+                const nextPlayer = gameState ? gameState.currentPlayer : 'yellow';
+                const params = new URLSearchParams({
+                    room: this.roomName,
+                    player: nextPlayer
+                });
+
+                if (gameState) {
+                    params.set('game', JSON.stringify(gameState));
+                }
+
+                return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
             }
 
             copyInviteLink() {
@@ -647,9 +668,12 @@
                 if (this.playerColor === 'red') {
                     player1Status.textContent = 'You (Red)';
                     player2Status.textContent = this.gameActive ? 'Invite Yellow player' : 'Waiting for Yellow player...';
-                } else {
+                } else if (this.playerColor === 'yellow') {
                     player1Status.textContent = this.gameActive ? 'Opponent (Red)' : 'Waiting for Red player...';
                     player2Status.textContent = 'You (Yellow)';
+                } else {
+                    player1Status.textContent = 'Waiting...';
+                    player2Status.textContent = 'Waiting...';
                 }
                 
                 // Update current player indicator with clear messaging
@@ -819,7 +843,7 @@
                     // Also update the invite link
                     const inviteLink = document.getElementById('inviteLink');
                     if (inviteLink) {
-                        inviteLink.textContent = newURL;
+                        inviteLink.textContent = this.createInviteURL(gameState);
                     }
                     
                     console.log('Updated URL with game state:', gameState.timestamp);
