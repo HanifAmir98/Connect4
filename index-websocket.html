@@ -348,7 +348,7 @@
     
     <div class="container">
         <div class="header">
-            <h1>🎯 Connect 4</h1>
+            <h1>Connect 4</h1>
             <p>Challenge your friends in real-time multiplayer!</p>
         </div>
 
@@ -581,7 +581,7 @@
 
                 roomInfo.style.display = 'block';
                 currentRoomName.textContent = this.roomName;
-                inviteLink.textContent = `${window.location.origin}${window.location.pathname}?room=${this.roomName}`;
+                inviteLink.textContent = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(this.roomName)}`;
             }
 
             copyInviteLink() {
@@ -714,7 +714,7 @@
             updateConnectionStatus(status) {
                 const statusElement = document.getElementById('connectionStatus');
                 statusElement.className = `connection-status ${status}`;
-                statusElement.textContent = status === 'connected' ? '🟢 Connected' : '🔴 Disconnected';
+                statusElement.textContent = status === 'connected' ? 'Connected' : 'Disconnected';
             }
         }
 
@@ -727,6 +727,9 @@
             const roomParam = urlParams.get('room');
             if (roomParam) {
                 document.getElementById('roomNameInput').value = roomParam;
+                setTimeout(() => {
+                    document.getElementById('joinRoomBtn').click();
+                }, 500);
             }
         });
     </script>

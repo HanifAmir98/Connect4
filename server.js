@@ -19,9 +19,9 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve the main game file
+// Serve the real-time multiplayer game file
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'index-websocket.html'));
 });
 
 // Game state storage (in production, use Redis or database)
@@ -80,9 +80,23 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Leave any previous rooms
+        // Leave any previous rooms and remove stale player entries
         socket.rooms.forEach(room => {
             if (room !== socket.id) {
+                const previousRoom = gameRooms.get(room);
+                if (previousRoom && previousRoom.players[socket.id]) {
+                    delete previousRoom.players[socket.id];
+
+                    if (Object.keys(previousRoom.players).length === 0) {
+                        gameRooms.delete(room);
+                    } else {
+                        previousRoom.gameActive = false;
+                        io.to(room).emit('playerLeft', {
+                            players: previousRoom.players,
+                            playerCount: Object.keys(previousRoom.players).length
+                        });
+                    }
+                }
                 socket.leave(room);
             }
         });
@@ -133,6 +147,7 @@ io.on('connection', (socket) => {
             // Room is full
             socket.emit('error', { message: 'Room is full' });
             socket.leave(roomName);
+            socket.currentRoom = null;
             return;
         }
 
@@ -152,6 +167,11 @@ io.on('connection', (socket) => {
     socket.on('makeMove', (data) => {
         const { column } = data;
         const roomName = socket.currentRoom;
+
+        if (!Number.isInteger(column) || column < 0 || column > 6) {
+            socket.emit('error', { message: 'Invalid column' });
+            return;
+        }
 
         if (!roomName || !gameRooms.has(roomName)) {
             socket.emit('error', { message: 'Not in a valid room' });
@@ -193,14 +213,15 @@ io.on('connection', (socket) => {
             io.to(roomName).emit('gameEnded', {
                 board: room.board,
                 winner: player.color,
-                winningMove: { row: moveRow, col: column }
+                lastMove: { row: moveRow, col: column, color: player.color }
             });
         } else if (checkDraw(room.board)) {
             room.gameActive = false;
             room.winner = 'draw';
             io.to(roomName).emit('gameEnded', {
                 board: room.board,
-                winner: 'draw'
+                winner: 'draw',
+                lastMove: { row: moveRow, col: column, color: player.color }
             });
         } else {
             // Switch turns
@@ -227,7 +248,7 @@ io.on('connection', (socket) => {
         // Reset game state
         room.board = createEmptyBoard();
         room.currentPlayer = 'red';
-        room.gameActive = true;
+        room.gameActive = Object.keys(room.players).length === 2;
         room.winner = null;
 
         io.to(roomName).emit('newGameStarted', {
@@ -252,6 +273,7 @@ io.on('connection', (socket) => {
                     gameRooms.delete(roomName);
                 } else {
                     // Notify remaining players
+                    room.gameActive = false;
                     io.to(roomName).emit('playerLeft', {
                         players: room.players,
                         playerCount: Object.keys(room.players).length

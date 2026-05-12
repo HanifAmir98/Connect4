@@ -293,7 +293,7 @@
     
     <div class="container">
         <div class="header">
-            <h1>🎯 Connect 4</h1>
+            <h1>Connect 4</h1>
             <p>Challenge your friends in this classic strategy game!</p>
         </div>
 
@@ -310,11 +310,11 @@
             <div class="room-info" id="roomInfo" style="display: none;">
                 <h3>Room: <span id="currentRoomName"></span></h3>
                 <div class="invite-link">
-                    <strong>📤 Share This Link After Each Move:</strong> <span id="inviteLink"></span>
+                    <strong>Share This Link After Each Move:</strong> <span id="inviteLink"></span>
                     <button class="copy-btn" id="copyLinkBtn">Copy Link</button>
                 </div>
                 <div style="background: #fef3c7; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 0.9em; color: #92400e;">
-                    <strong>📋 Instructions:</strong> After making your move, copy and share the updated link above with your opponent. They should click the link to see your move and make their turn.
+                    <strong>Instructions:</strong> After making your move, copy and share the updated link above with your opponent. They should click the link to see your move and make their turn.
                 </div>
             </div>
 
@@ -337,7 +337,7 @@
             <div class="game-status" id="gameStatus" style="display: none;"></div>
 
             <div style="text-align: center; margin-top: 20px;">
-                <button class="btn" id="refreshGameBtn">🔄 Refresh Game</button>
+                <button class="btn" id="refreshGameBtn">Refresh Game</button>
                 <button class="btn" id="leaveGameBtn">Leave Game</button>
                 <button class="btn" id="newGameBtn" style="display: none;">New Game</button>
             </div>
@@ -451,6 +451,7 @@
 
                 this.roomName = roomName;
                 this.playerColor = 'red';
+                localStorage.setItem(`connect4_${this.roomName}_playerColor`, this.playerColor);
                 this.showGameSection();
                 this.updateRoomInfo();
                 this.saveGameState();
@@ -473,6 +474,8 @@
 
             assignPlayerColor() {
                 console.log('Assigning player color for room:', this.roomName);
+
+                const savedPlayerColor = localStorage.getItem(`connect4_${this.roomName}_playerColor`);
                 
                 // Check URL for game state first
                 const urlParams = new URLSearchParams(window.location.search);
@@ -487,10 +490,13 @@
                             const hasRedMoves = gameState.board.some(row => row.some(cell => cell === 'red'));
                             const hasYellowMoves = gameState.board.some(row => row.some(cell => cell === 'yellow'));
                             
-                            if (!hasRedMoves && !hasYellowMoves) {
-                                // Empty board - this is the first player
-                                this.playerColor = 'red';
-                                console.log('Assigned RED - first player');
+                            if (savedPlayerColor === 'red' || savedPlayerColor === 'yellow') {
+                                this.playerColor = savedPlayerColor;
+                                console.log('Restored', this.playerColor, 'from local player state');
+                            } else if (!hasRedMoves && !hasYellowMoves) {
+                                // Empty shared game link - the creator already has the red role locally.
+                                this.playerColor = 'yellow';
+                                console.log('Assigned YELLOW - joined shared game link');
                             } else if (hasRedMoves && !hasYellowMoves) {
                                 // Red has moves, yellow hasn't - assign yellow
                                 this.playerColor = 'yellow';
@@ -503,6 +509,7 @@
                             
                             this.updateGameState(gameState);
                             this.updatePlayerStatus();
+                            localStorage.setItem(`connect4_${this.roomName}_playerColor`, this.playerColor);
                             this.showGameMessage(`Joined game as ${this.playerColor.toUpperCase()} player!`);
                             return;
                         }
@@ -518,7 +525,9 @@
                     const hasRedMoves = gameState.board.some(row => row.some(cell => cell === 'red'));
                     const hasYellowMoves = gameState.board.some(row => row.some(cell => cell === 'yellow'));
                     
-                    if (!hasRedMoves && !hasYellowMoves) {
+                    if (savedPlayerColor === 'red' || savedPlayerColor === 'yellow') {
+                        this.playerColor = savedPlayerColor;
+                    } else if (!hasRedMoves && !hasYellowMoves) {
                         this.playerColor = 'red';
                     } else if (hasRedMoves && !hasYellowMoves) {
                         this.playerColor = 'yellow';
@@ -532,6 +541,7 @@
                     this.playerColor = 'red';
                 }
                 
+                localStorage.setItem(`connect4_${this.roomName}_playerColor`, this.playerColor);
                 this.updatePlayerStatus();
             }
 
@@ -592,7 +602,7 @@
 
                 roomInfo.style.display = 'block';
                 currentRoomName.textContent = this.roomName;
-                inviteLink.textContent = `${window.location.origin}${window.location.pathname}?room=${this.roomName}`;
+                inviteLink.textContent = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(this.roomName)}`;
             }
 
             copyInviteLink() {
@@ -630,11 +640,11 @@
                     currentPlayerDiv.textContent = 'Waiting for players to join...';
                     currentPlayerDiv.style.background = 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
                 } else if (this.currentPlayer === this.playerColor) {
-                    currentPlayerDiv.textContent = `🎯 YOUR TURN (${this.playerColor.toUpperCase()})`;
+                    currentPlayerDiv.textContent = `YOUR TURN (${this.playerColor.toUpperCase()})`;
                     currentPlayerDiv.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
                     currentPlayerDiv.style.animation = 'pulse 2s infinite';
                 } else {
-                    currentPlayerDiv.textContent = `⏳ Waiting for ${this.currentPlayer.toUpperCase()} player...`;
+                    currentPlayerDiv.textContent = `Waiting for ${this.currentPlayer.toUpperCase()} player...`;
                     currentPlayerDiv.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
                     currentPlayerDiv.style.animation = 'none';
                 }
@@ -692,10 +702,9 @@
                 // Find the lowest empty row in the column
                 for (let row = 5; row >= 0; row--) {
                     if (!this.gameBoard[row][col]) {
+                        this.lastMove = { row, col, color: this.currentPlayer };
                         this.gameBoard[row][col] = this.currentPlayer;
                         this.renderBoard();
-                        
-                        this.lastMove = { row, col, color: this.currentPlayer };
                         
                         if (this.checkWin(row, col)) {
                             this.endGame(this.currentPlayer);
@@ -787,7 +796,7 @@
             updateURLWithGameState(gameState) {
                 try {
                     const gameData = encodeURIComponent(JSON.stringify(gameState));
-                    const newURL = `${window.location.origin}${window.location.pathname}?room=${this.roomName}&game=${gameData}`;
+                    const newURL = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(this.roomName)}&game=${gameData}`;
                     window.history.replaceState({}, '', newURL);
                     
                     // Also update the invite link
@@ -832,7 +841,7 @@
                 this.updatePlayerStatus();
                 
                 // Show message if turn changed
-                if (wasMyTurn && !isMyTurn && this.lastMove) {
+                if (!wasMyTurn && isMyTurn && this.lastMove) {
                     this.showGameMessage(`Opponent played ${this.lastMove.color.toUpperCase()}! Your turn now.`);
                 }
             }
@@ -850,7 +859,7 @@
             manualRefresh() {
                 console.log('Manual refresh triggered');
                 this.checkGameState();
-                this.showGameMessage('🔄 Checking for updates...');
+                this.showGameMessage('Checking for updates...');
             }
 
             leaveGame() {
@@ -869,7 +878,7 @@
             updateConnectionStatus(status) {
                 const statusElement = document.getElementById('connectionStatus');
                 statusElement.className = `connection-status ${status}`;
-                statusElement.textContent = status === 'connected' ? '🟢 Connected' : '🔴 Disconnected';
+                statusElement.textContent = status === 'connected' ? 'Connected' : 'Disconnected';
             }
         }
 
