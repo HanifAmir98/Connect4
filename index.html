@@ -451,7 +451,7 @@
 
                 this.roomName = roomName;
                 this.playerColor = 'red';
-                localStorage.setItem(`connect4_${this.roomName}_playerColor`, this.playerColor);
+                sessionStorage.setItem(`connect4_${this.roomName}_playerColor`, this.playerColor);
                 this.showGameSection();
                 this.updateRoomInfo();
                 this.saveGameState();
@@ -475,7 +475,7 @@
             assignPlayerColor() {
                 console.log('Assigning player color for room:', this.roomName);
 
-                const savedPlayerColor = localStorage.getItem(`connect4_${this.roomName}_playerColor`);
+                const savedPlayerColor = sessionStorage.getItem(`connect4_${this.roomName}_playerColor`);
                 
                 // Check URL for game state first
                 const urlParams = new URLSearchParams(window.location.search);
@@ -509,7 +509,7 @@
                             
                             this.updateGameState(gameState);
                             this.updatePlayerStatus();
-                            localStorage.setItem(`connect4_${this.roomName}_playerColor`, this.playerColor);
+                            sessionStorage.setItem(`connect4_${this.roomName}_playerColor`, this.playerColor);
                             this.showGameMessage(`Joined game as ${this.playerColor.toUpperCase()} player!`);
                             return;
                         }
@@ -541,7 +541,7 @@
                     this.playerColor = 'red';
                 }
                 
-                localStorage.setItem(`connect4_${this.roomName}_playerColor`, this.playerColor);
+                sessionStorage.setItem(`connect4_${this.roomName}_playerColor`, this.playerColor);
                 this.updatePlayerStatus();
             }
 
@@ -629,7 +629,7 @@
                 
                 if (this.playerColor === 'red') {
                     player1Status.textContent = 'You (Red)';
-                    player2Status.textContent = this.gameActive ? 'Opponent (Yellow)' : 'Waiting for Yellow player...';
+                    player2Status.textContent = this.gameActive ? 'Invite Yellow player' : 'Waiting for Yellow player...';
                 } else {
                     player1Status.textContent = this.gameActive ? 'Opponent (Red)' : 'Waiting for Red player...';
                     player2Status.textContent = 'You (Yellow)';
